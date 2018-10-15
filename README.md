@@ -77,5 +77,6 @@ SuperLearnerClassifier() methods are:
     evaluate_base(), provides information on trained base estimator accuracy scores.
     
 To do:
+ * Check bootstrapping implementation
  * Implement regression
  * Implement more flexible method of choosing base estimator set
