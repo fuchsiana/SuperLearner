@@ -44,11 +44,9 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         default_set_: [rfc, logr, knn, mlpc, rsvc, sgdc] 
             - set of 6 estimators as required for assignment default; dtc omitted as it is used at stack layer by default.
         speedy_set_: [dtc, rfc, logr, sgdc]
-            - minimal set of 4 estimators, chosen on the basis of speed (via combined timing of fit and predict methods 
-                on MNIST test set in Lab1 Solution notebook, on 20% of dataset with 5 cv folds).
+            - minimal set of 4 estimators, chosen on the basis of speed
         accuracy_set_: [rfc, logr, knn, mlpc, rsvc]
-            - set of 5 estimators, chosen on the basis of accuracy (on MNIST test set in Lab1 Solution notebook, 
-                on 20% of dataset with 5 cv folds) and dissimilarity of estimator types.
+            - set of 5 estimators, chosen on the basis of accuracy
         
     proba_predict: Boolean, optional, (default = False)
         Whether to predict probability estimates for all levels of target feature at base layer.  
@@ -156,8 +154,7 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         
         # Create attributes for estimators, with fixed hyperparameters
         
-        # Most hyperparameters derived from running Lab1 Solution notebook on 20% of dataset with 5 cv folds
-        # SGDClassifier and SVC parameters derived from running GridSearchCV and RandomizedSearchCV respectively under same conditions
+        # Most hyperparameters derived from running previous tests
 
         dtc = DecisionTreeClassifier(criterion="entropy", max_depth = 9, min_samples_split=200)
         logr = LogisticRegression(C=0.3, max_iter=1000)
@@ -183,8 +180,6 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         clfs = [dtc, rfc, logr, knn, mlpc, rsvc, sgdc]
         
         # defining sets of base estimators as dictionary attributes
-        # method for creating dictionaries taken from here: 
-        # https://stackoverflow.com/questions/49373636/creating-multiple-dicts-using-some-but-not-all-elements-from-a-pair-of-lists
         
         # set of all estimators named in clf_labels
         all_clfs_ = {k:v for k,v in zip(clf_labels,clfs)}
@@ -262,10 +257,9 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
 
         for fold, (train_index, test_index) in enumerate(StratifiedKFold(n_splits=self.kfolds, shuffle=True).split(X, y)):
             
-            # I spent a few days stuck trying to split the data before I realised that my data was still 
-            # in pandas dataframe form, and so it was necessary to use iloc. 
-            # Because of this, I've incorporated a check here as to the type of data being used, similar to that 
-            # found at: https://github.com/MaxHalford/xam/blob/master/xam/ensemble/stacking.py
+            # I spent a while stuck trying to split the data before I realised that my data was still 
+            # in pandas dataframe form, and so it was necessary to use iloc. Annoying.
+            # Because of this, I've incorporated a check here as to the type of data being used
             if isinstance(X, pd.DataFrame):
                 fold_xtrain, fold_xtest = X.iloc[train_index], X.iloc[test_index]
             else:
@@ -305,8 +299,6 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
                 if self.proba_predict:
                     current_model_fold_preds = current_model.predict_proba(fold_xtest)
                     # add predictions to array for this validation fold
-                    # code for placing probability predictions into fold_preds adapted from:
-                    # https://github.com/MaxHalford/xam/blob/master/xam/ensemble/stacking.py
                     for j, k in enumerate(range(len(self.classes_) * i, len(self.classes_) * (i + 1))):
                         fold_preds[:, k] = current_model_fold_preds[:, j]             
                 else:
@@ -317,8 +309,6 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
                 
                 # calculate accuracy of current model on this validation fold
                 if self.proba_predict:
-                    # idea to use LabelBinarizer for scoring probability predictions adapted from:
-                    # https://github.com/MaxHalford/xam/blob/master/xam/ensemble/stacking.py
                     lb = LabelBinarizer().fit(y)
                     current_model_fold_score = accuracy_score(fold_ytest, lb.inverse_transform(current_model_fold_preds))
                 else:
@@ -391,7 +381,7 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
             The predicted class labels of the input samples. 
         """
         
-        # Check is fit had been called by confirming that the teamplates_ dictiponary has been set up
+        # Check is fit had been called by confirming that the templates_ dictionary has been set up
         check_is_fitted(self, ['stack_estimator_', 'base_estimators_'])
 
         # Check that the input features match the type and shape of the training features
