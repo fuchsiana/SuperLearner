@@ -9,7 +9,8 @@ from seaborn import heatmap
 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-# from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+# from sklearn.ensemble import AdaBoostClassifier
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression, SGDClassifier
 from sklearn.neighbors import KNeighborsClassifier
@@ -63,8 +64,8 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         
     kfolds: int, optional, (default = 5)
         Number of folds to be used in k-fold training of base estimator layer to fit stack layer
-		
-	random_seed: int, optional (default = None)
+
+    random_seed: int, optional (default = None)
         Set as int for replicable results; leave as default 'None' for random.
     
     n_jobs: int, optional, (default = 1)
@@ -128,8 +129,7 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         self.incl_orig_input = incl_orig_input
         self.bootstrapping = bootstrapping
         self.kfolds = kfolds
-		self.random_seed = random_seed
-        Set as int for replicable results; leave as default 'None' for random.
+        self.random_seed = random_seed
         self.n_jobs = n_jobs
         self.verbose = verbose
         
@@ -154,30 +154,28 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         
         # Create attributes for estimators, with fixed hyperparameters
         
-        # Most hyperparameters derived from running previous tests
-
+        # Hyperparameters derived from running gridsearch tests on the Fashion MNIST dataset per estimator
+        # Adapt as required per use case
+        
         dtc = DecisionTreeClassifier(criterion="entropy", max_depth = 9, min_samples_split=200)
         logr = LogisticRegression(C=0.3, max_iter=1000)
         knn = KNeighborsClassifier(n_neighbors=7, n_jobs=self.n_jobs)
         mlpc = MLPClassifier(alpha = 0.000001, hidden_layer_sizes=400, max_iter=2000)
         rsvc = SVC(C = 100000, gamma = 0.01, kernel="rbf", probability=True)
         sgdc = SGDClassifier(loss = 'modified_huber', alpha = 0.01, max_iter = 200, n_jobs=self.n_jobs)
-        # max_features=8 was found to work best with the MNIST dataset, but this setting caused problems 
-        # with Random Forest at the stack layer and on the iris dataset, so this parameter is left at default of 'all'    
         rfc = RandomForestClassifier(n_estimators=450, min_samples_split=200, n_jobs=self.n_jobs)
-
-        # Tuned GradientBoostingClassifier was found to (marginally) be the most accurate classifier on the MNIST dataset
-        # However it is too slow to be of practical use on a standard desktop machine as part of a super learner
-        # gbc = GradientBoostingClassifier(learning_rate = 0.1, max_depth = 5, min_samples_leaf = 70,\ 
-        #                                min_samples_split = 50, n_estimators = 350)
+        # Note - GradientBoostingClassifier is too slow to be of practical use as part of a super learner on a standard desktop machine, 
+        # so it is not included in any pre-made set of base estimators
+        gbc = GradientBoostingClassifier(learning_rate = 0.1, max_depth = 5, min_samples_leaf = 70, \
+                                         min_samples_split = 50, n_estimators = 350)
 
         # list of labels for estimators
         clf_labels = ['Decision Tree classifier', 'Random Forest classifier', 'Logistic Regression', \
                       'k-Nearest Neighbours classifier', 'Multi-layer Perceptron classifier', \
-                      'Support Vector (rbf-kernel) classifier', 'SGD (modified huber) classifier']
+                      'Support Vector (rbf-kernel) classifier', 'SGD (modified huber) classifier', 'Gradient Boosting classifier']
         
         # list of all estimator attributes, corresponding to clf_labels
-        clfs = [dtc, rfc, logr, knn, mlpc, rsvc, sgdc]
+        clfs = [dtc, rfc, logr, knn, mlpc, rsvc, sgdc, gbc]
         
         # defining sets of base estimators as dictionary attributes
         
@@ -186,15 +184,25 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         
         # set of estimators consisting of 'Random Forest classifier', 'Logistic Regression', 'k-Nearest Neighbours classifier', 
         # 'Multi-layer Perceptron classifier', 'C-Support Vector classifier', 'SGD classifier with modified huber loss function'
-        default_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {dtc}}
+        default_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {dtc, gbc}}
         
         # set of estimators consisting of 'Decision Tree classifier', 'Random Forest classifier', 'Logistic Regression',
         # 'SGD classifier with modified huber loss function'      
-        speedy_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {knn, mlpc, rsvc}}
+        speedy_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {knn, mlpc, rsvc, gbc}}
         
         # set of estimators consisting of 'Random Forest classifier', 'Logistic Regression', 
         # 'k-Nearest Neighbours classifier', 'Multi-layer Perceptron classifier', 'C-Support Vector classifier'
-        accuracy_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {dtc, sgdc}}
+        accuracy_set_ = {k:v for k,v in zip(clf_labels,clfs) if v not in {dtc, sgdc, gbc}}
+        
+        # Create user_set_ dictionary below to implement your own set of base estimators
+        # Dictionary can include estimators as pre-defined above or as user-defined
+        # First import any scikit-learn estimator modules that are not imported by default, e.g. AdaBoostClassifier()
+        # Example:
+        #     user_set_ = {'Random Forest classifier': rfc,
+        #                  'Logistic Regression': LogisticRegression(C=0.5, max_iter=500),
+        #                  'AdaBoost classifier': AdaBoostClassifier(),
+        #                  'Random Forest classifier 2': RandomForestClassifier(n_estimators=1000, n_jobs=self.n_jobs)}
+        user_set_ = default_set_
         
         # test_set = {k:v for k,v in zip(clf_labels,clfs) if v not in {rfc, knn, mlpc, rsvc}}
         
@@ -208,6 +216,8 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
             self.base_estimators_ = speedy_set_
         elif self.base_estimator_set == 'accuracy_set':
             self.base_estimators_ = accuracy_set_
+        elif self.base_estimator_set == 'user_set':
+            self.base_estimators_ = user_set_
         else:
             self.base_estimators_ = default_set_
         
@@ -230,10 +240,10 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         else:
             self.stack_estimator_ = dtc
         
-        # Check that X and y have correct shape
+        # Check that X and y have the correct shape
         X, y = check_X_y(X, y)
         
-        # Store the classes seen during fit
+        # Store the classes seen during fitting
         self.classes_ = unique_labels(y)
 
         # Create empty arrays to store generated data to train stack layer and evaluate base learners
@@ -257,9 +267,8 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
 
         for fold, (train_index, test_index) in enumerate(StratifiedKFold(n_splits=self.kfolds, shuffle=True).split(X, y)):
             
-            # I spent a while stuck trying to split the data before I realised that my data was still 
-            # in pandas dataframe form, and so it was necessary to use iloc. Annoying.
-            # Because of this, I've incorporated a check here as to the type of data being used
+            # Check as to whether the the data inputted is in pandas dataframe/series or numpy ndarray form
+            # and 
             if isinstance(X, pd.DataFrame):
                 fold_xtrain, fold_xtest = X.iloc[train_index], X.iloc[test_index]
             else:
@@ -288,7 +297,7 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
                 if fold == 0:
                     score_clfs.append(nm)
                 
-                # Bootsrapping training data on fold, if required
+                # Bootstrapping training data on fold, if required
                 if self.bootstrapping:
                     fold_xtrain, fold_ytrain = resample(fold_xtrain, fold_ytrain, replace=True)
                     
@@ -334,7 +343,7 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         self.scores_.columns = score_clfs
         if self.verbose:
             print("Accuracy score per estimator per fold:")
-            display(self.scores_)      
+            print(self.scores_)      
         
         # add original input features to stack-layer-training predictions array if required
         if self.incl_orig_input:
@@ -428,11 +437,11 @@ class SuperLearnerClassifier(BaseEstimator, ClassifierMixin):
         check_is_fitted(self, ['scores_'])
     
         print("Accuracy score per estimator per fold:")
-        display(self.scores_)
+        print(self.scores_)
         
         print("Average accuracy score per estimator:")
         scores_avg = self.scores_.mean()
-        display(scores_avg)
+        print(scores_avg)
 
         ax = heatmap(self.scores_.corr(), annot=True)
         plt.show()

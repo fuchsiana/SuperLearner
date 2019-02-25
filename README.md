@@ -4,9 +4,9 @@ Scikit-learn extension implementing SuperLearner Classifier.
 
 SLC.py contains the class SuperLearnerClassifier(), a functioning SuperLearner Classifier.
 
-The Super Learner is a heterogeneous stacked ensemble classifier, a classification model that uses a set of base classifiers of different types, the outputs of which are then combined in another classifier at the stacked layer.  To	avoid	overfitting	the	generation of the stacked	layer	training set	uses a k-fold cross validation process.
+The Super Learner is a heterogeneous stacked ensemble classifier, a classification model that uses a set of base classifiers of different types, the outputs of which are then combined in another classifier at the stacked layer.  To avoid overfitting the generation of the stacked layer training set uses a k-fold cross validation process.
 
-As a Scikit-learn extension, a number of scikit-learn	base	estimator	implementations	are utilised.  These are:
+As a Scikit-learn extension, a number of scikit-learn base estimator implementations are utilised.  These are:
 
  * 'dtc' - Decision Tree classifier
  * 'rfc'- Random Forest classifier
@@ -75,6 +75,8 @@ SuperLearnerClassifier() methods are:
         Returns array of shape = [n_instances, ]. The predicted output values for the input samples. 
         
     evaluate_base(), provides information on trained base estimator accuracy scores.
+    
+
     
 To do:
  * Check bootstrapping implementation
