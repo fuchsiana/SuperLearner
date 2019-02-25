@@ -18,7 +18,7 @@ As a Scikit-learn extension, a number of scikit-learn base estimator implementat
  
 User has the option of any of these at the stack level and a few prescribed cominations at the base level.  User also has the option to choose number of k-folds, whether to perform bootstrapping on the training data for the base estimators, and whether to add the original data to the stack layer input.
 
-See SLC_demo.ipynb for example of SuperLearner applied to the [Fashion MNIST dataset](https://www.kaggle.com/zalando-research/fashionmnist).
+See SLC_demo.ipynb for example of SuperLearner applied to the [Fashion MNIST dataset](https://www.kaggle.com/zalando-research/fashionmnist) (note: this doesn't display very well in GitHub due to large tables so is best viewed downloaded). 
 
 SuperLearnerClassifier() parameters are:
 
